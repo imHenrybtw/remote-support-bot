@@ -1,0 +1,35 @@
+# ─── Segredos e credenciais ───────────────────────────────────────────────────
+.env
+*.pem
+*.key
+*.crt
+
+# ─── Sessão do WhatsApp (contém chaves privadas do dispositivo) ───────────────
+wa-sessions.db
+wa-sessions.db-shm
+wa-sessions.db-wal
+*.db
+*.db-shm
+*.db-wal
+
+# ─── Binários compilados ──────────────────────────────────────────────────────
+support-bot
+/support-bot
+*.exe
+
+# ─── Imagens do guia VPN (conteúdo interno da empresa) ───────────────────────
+vpn-images/
+
+# ─── Go ───────────────────────────────────────────────────────────────────────
+/vendor/
+
+# ─── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ─── IDEs ─────────────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
