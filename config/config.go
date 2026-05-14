@@ -21,6 +21,8 @@ type Config struct {
 
 type BotConfig struct {
 	CompanyName              string   `yaml:"company_name"`
+	SupportName              string   `yaml:"support_name"` // nome do time exibido no menu de boas-vindas
+	Timezone                 string   `yaml:"timezone"`     // ex: "America/Sao_Paulo"
 	WorkingHoursStart        string   `yaml:"working_hours_start"`
 	WorkingHoursEnd          string   `yaml:"working_hours_end"`
 	SaturdayHoursEnd         string   `yaml:"saturday_hours_end"`
@@ -125,6 +127,12 @@ func Load(path string) {
 	// Aplica padrões para campos obrigatórios não preenchidos
 	if C.Bot.CompanyName == "" {
 		C.Bot.CompanyName = "Empresa"
+	}
+	if C.Bot.SupportName == "" {
+		C.Bot.SupportName = "Suporte Técnico"
+	}
+	if C.Bot.Timezone == "" {
+		C.Bot.Timezone = "America/Sao_Paulo"
 	}
 	if C.GLPI.TicketTitle == "" {
 		C.GLPI.TicketTitle = "Suporte via WhatsApp"
