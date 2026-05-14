@@ -296,3 +296,10 @@ As capturas de tela do FortiClient ficam em `vpn.images_path` (padrão: `/opt/su
 | `05-conectado.png` | Status "Conectado" com ícone verde |
 
 Se uma imagem não for encontrada, o bot envia a mensagem de texto correspondente como fallback.
+
+## 🚧 Em desenvolvimento
+ 
+| Funcionalidade | Status |
+|---|---|
+| 🖥️ **Painel web de auditoria** | Em desenvolvimento — interface para visualizar histórico de operações, gerenciar a whitelist de telefones e acompanhar atendimentos em aberto, com autenticação básica configurável via `WEB_USERNAME` / `WEB_PASSWORD` no `.env` |
+
