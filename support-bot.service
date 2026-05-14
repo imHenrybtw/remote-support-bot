@@ -1,0 +1,29 @@
+[Unit]
+Description=Bot de Suporte TI via WhatsApp
+Documentation=https://github.com/sua-empresa/support-bot
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=support-bot
+Group=support-bot
+WorkingDirectory=/opt/support-bot
+
+# Binário e caminho do config
+ExecStart=/opt/support-bot/support-bot /opt/support-bot/config.yaml
+
+# Carrega o .env com as credenciais
+EnvironmentFile=/opt/support-bot/.env
+
+# Reinicia automaticamente em falha (não reinicia em saída limpa código 0)
+Restart=on-failure
+RestartSec=10s
+
+# Aguarda até 30s para o processo encerrar graciosamente no Ctrl+C / SIGTERM
+TimeoutStopSec=30
+
+# Logs vão para o journald (ver com: journalctl -u support-bot -f)
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=support-bot
