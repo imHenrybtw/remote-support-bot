@@ -1,0 +1,115 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+#  config.yaml — WhatsApp Support Bot
+#
+#  Valores com ${VAR} são substituídos automaticamente pelas variáveis
+#  de ambiente definidas no .env na inicialização do bot.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+bot:
+  # Nome da empresa — aparece nos e-mails e cards do Teams enviados pelo bot.
+  company_name: "Empresa"
+
+  # Horário de atendimento (formato HH:MM, fuso local do servidor)
+  working_hours_start: "08:00"
+  working_hours_end:   "18:00"
+  saturday_hours_end:  "12:00"
+
+  # Dias úteis: 1=Seg, 2=Ter, 3=Qua, 4=Qui, 5=Sex, 6=Sáb, 7=Dom
+  working_days: [1, 2, 3, 4, 5, 6]
+
+  # Telefones de urgência exibidos fora do horário de atendimento
+  urgency_phone:
+    - "+55 11 99999-0001"
+    - "+55 11 99999-0002"
+
+  # Minutos sem atendente → avisa o Teams e encerra a fila de espera
+  human_timeout_minutes: 10
+
+  # Minutos sem mensagem do atendente → bot envia pergunta de acompanhamento
+  attendant_timeout_minutes: 30
+
+  # Minutos sem resposta do usuário em fluxos intermediários (unlock/firewall/vpn)
+  inactivity_timeout_minutes: 10
+
+  # Webhook do Teams (valor real vem do .env → TEAMS_WEBHOOK_URL)
+  teams_webhook_url: "${TEAMS_WEBHOOK_URL}"
+
+# ─── Active Directory ─────────────────────────────────────────────────────────
+ad:
+  
+  host:          "ldaps://dc.empresa.local:636"
+  bind_dn:       "CN=ldap bot,OU=Servicos,DC=empresa,DC=local"
+  bind_password: "${AD_BIND_PASSWORD}"
+  base_dn:       "DC=empresa,DC=local"
+
+  # Grupos cujos membros têm permissão de solicitar desbloqueio de contas.
+  # Suporta grupos aninhados via LDAP_MATCHING_RULE_IN_CHAIN.
+  group_unlock:
+    - "CN=GRP_HelpDesk,OU=Grupos,DC=empresa,DC=local"
+
+  # TLS
+  use_starttls:    false   # true = STARTTLS em ldap:// (porta 389)
+  tls_skip_verify: true    # true = aceita certificados self-signed (DCs internos)
+  tls_server_name: "empresa.local"  # hostname do DC para validação do certificado TLS
+
+# ─── SMTP ─────────────────────────────────────────────────────────────────────
+smtp:
+  host:     "192.168.1.10"       # IP ou hostname do servidor de e-mail interno
+  port:     25
+  user:     ""                   # Deixe vazio se o servidor não exige autenticação
+  from:     "Bot Suporte TI <no-reply@empresa.com.br>"
+
+# ─── Firewalls Fortigate ──────────────────────────────────────────────────────
+# Lista de firewalls — um por filial/localidade.
+# O token de cada entrada vem do .env como FW_TOKEN_<name> (ver .env.example).
+firewalls:
+  - name:           "Matriz"
+    host:           "https://fortigate.empresa.com.br"
+    tls_skip_verify: true   # true apenas para certificados self-signed internos
+  - name:           "FilialSP"
+    host:           "https://fortigatesp.empresa.com.br"
+    tls_skip_verify: true
+  - name:           "FilialCtba"
+    host:           "https://fortigatectba.empresa.com.br"
+    tls_skip_verify: true
+
+# ─── GLPI ─────────────────────────────────────────────────────────────────────
+glpi:
+  url:         "https://glpi.empresa.com.br/api.php/v2"
+  category_id: 0   # 0 = sem categoria; defina o ID da categoria desejada
+
+  # Título padrão dos chamados abertos pelo bot
+  ticket_title: "Suporte via WhatsApp"
+
+  # Tokens legados (GLPI 10 e anteriores) — vêm do .env
+  app_token:  "${GLPI_APP_TOKEN}"
+  user_token: "${GLPI_USER_TOKEN}"
+
+  # OAuth2 (GLPI 11+) é configurado exclusivamente pelo .env:
+  #   GLPI_OAUTH_CLIENT_ID, GLPI_OAUTH_CLIENT_SECRET,
+  #   GLPI_OAUTH_USERNAME, GLPI_OAUTH_PASSWORD
+
+# ─── PostgreSQL ───────────────────────────────────────────────────────────────
+postgres:
+  host:     "localhost"
+  port:     5432
+  user:     "botsuporte"
+  password: "${POSTGRES_PASSWORD}"
+  dbname:   "support_bot"
+  sslmode:  "disable"
+
+# ─── VPN ──────────────────────────────────────────────────────────────────────
+vpn:
+  # Pasta local onde estão as imagens do guia VPN (capturas de tela do FortiClient)
+  images_path: "/opt/support-bot/vpn-images"
+
+  # Configurações exibidas no tutorial enviado ao usuário via WhatsApp
+  gateway:      "ssl-vpn.empresa.com.br"  # endereço do Remote Gateway no FortiClient
+  port:         8443                       # porta customizada (Customize Port)
+  profile_name: "VPN-Empresa"             # nome do perfil de conexão salvo
+
+# ─── Painel web de auditoria ──────────────────────────────────────────────────
+web:
+  # Endereço de escuta do painel. Deixe vazio ("") para desabilitar.
+  # Credenciais (WEB_USERNAME / WEB_PASSWORD) vêm do .env.
+  listen: ""   # ex: ":8080"
