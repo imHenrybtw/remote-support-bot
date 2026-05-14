@@ -1,13 +1,17 @@
 # ═══════════════════════════════════════════════════════════════════════════════
 #  config.yaml — WhatsApp Support Bot
-#
-#  Valores com ${VAR} são substituídos automaticamente pelas variáveis
-#  de ambiente definidas no .env na inicialização do bot.
 # ═══════════════════════════════════════════════════════════════════════════════
 
 bot:
   # Nome da empresa — aparece nos e-mails e cards do Teams enviados pelo bot.
   company_name: "Empresa"
+
+  # Nome do time de suporte — exibido na mensagem de boas-vindas do WhatsApp.
+  support_name: "Suporte Técnico de TI"
+
+  # Fuso horário do servidor para cálculo do horário de atendimento.
+  # Lista completa: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+  timezone: "America/Sao_Paulo"
 
   # Horário de atendimento (formato HH:MM, fuso local do servidor)
   working_hours_start: "08:00"
@@ -36,7 +40,8 @@ bot:
 
 # ─── Active Directory ─────────────────────────────────────────────────────────
 ad:
-  
+  # Use ldaps://dc.empresa.local:636 para LDAPS (recomendado em produção)
+  # Use ldap://dc.empresa.local:389  para LDAP simples ou com STARTTLS
   host:          "ldaps://dc.empresa.local:636"
   bind_dn:       "CN=ldap bot,OU=Servicos,DC=empresa,DC=local"
   bind_password: "${AD_BIND_PASSWORD}"
