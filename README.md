@@ -126,7 +126,7 @@ WhatsApp (whatsmeow)
 ### 1. Clonar e compilar
 
 ```bash
-git clone https://github.com/sua-empresa/support-bot.git
+git clone https://github.com/imHenrybtw/remote-support-bot
 cd support-bot
 go build -o support-bot ./...
 ```
