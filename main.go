@@ -308,7 +308,7 @@ func main() {
 		if err = waClient.Connect(); err != nil {
 			panic(err)
 		}
-		fmt.Println("\n📱 Escaneie o QR Code com o WhatsApp:\n")
+		fmt.Print("\n📱 Escaneie o QR Code com o WhatsApp:\n\n")
 		for evt := range qrChan {
 			if evt.Event == "code" {
 				qrterminal.GenerateHalfBlock(evt.Code, qrterminal.L, os.Stdout)
