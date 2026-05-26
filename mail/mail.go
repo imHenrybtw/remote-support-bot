@@ -76,7 +76,7 @@ func send(to, subject, plainBody, htmlBody string) error {
 	w("")
 	w("--" + boundary + "--")
 
-	addr := net.JoinHostPort(host, strconv.Itoa(port))
+	addr := net.JoinHostPort(cfg.Host, strconv.Itoa(cfg.Port))
 
 	// Usa net.Dial com timeout explícito — smtp.SendMail não suporta contexto.
 	conn, err := net.DialTimeout("tcp", addr, smtpTimeout)
