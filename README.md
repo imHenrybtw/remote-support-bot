@@ -1,98 +1,103 @@
-# 🤖 Bot de Suporte TI — WhatsApp
+# 🤖 remote-support-bot
 
-Bot de atendimento para equipes de TI que dá suporte a **funcionários em home office** diretamente pelo WhatsApp, sem depender de acesso à rede corporativa.
+[![Build](https://github.com/imHenrybtw/remote-support-bot/actions/workflows/build.yml/badge.svg)](https://github.com/imHenrybtw/remote-support-bot/actions/workflows/build.yml)
+[![Go Version](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go&logoColor=white)](https://golang.org)
+[![License](https://img.shields.io/badge/License-GPL--3.0-blue?style=flat)](LICENSE)
+![Status](https://img.shields.io/badge/Status-In%20Development-orange?style=flat)
 
----
-
-## 🎯 O problema que este projeto resolve
-
-Funcionários em home office estão fora da rede interna. Quando enfrentam problemas de acesso — conta bloqueada no AD, sessão de firewall travada, VPN que não conecta — eles não conseguem abrir um chamado pelo portal interno nem acessar a intranet. O único canal que **sempre funciona** é o celular.
-
-Sem este bot, o atendimento dessas situações depende de:
-
-- Ligação para um ramal interno (inacessível de fora)
-- E-mail, que exige que o usuário esteja logado (impossível se a conta está bloqueada)
-- Acesso ao GLPI/ServiceDesk via VPN (sem VPN, não abre)
-
-O resultado é o funcionário parado esperando alguém da TI responder manualmente.
-
-Este bot elimina essa dependência: o usuário envia uma mensagem no WhatsApp e resolve o problema **sem intervenção humana** nos casos mais comuns.
+> IT support bot that assists **remote employees** directly via WhatsApp — no corporate network access required.
 
 ---
 
-## ✅ Funcionalidades
+## 🎯 The problem this project solves
 
-| Funcionalidade | Descrição |
+Remote employees working from home are outside the internal network. When they face access issues — AD account locked, firewall session stuck, VPN not connecting — they can't open a ticket through the internal portal or access the intranet. The only channel that **always works** is their phone.
+
+Without this bot, handling these situations depends on:
+
+- Calling an internal extension (unreachable from outside)
+- Email, which requires the user to be logged in (impossible if the account is locked)
+- Accessing GLPI/ServiceDesk via VPN (can't open VPN if the session is broken)
+
+The result: the employee is stuck waiting for someone on the IT team to respond manually.
+
+This bot eliminates that dependency — the user sends a WhatsApp message and resolves the issue **without human intervention** for the most common cases.
+
+---
+
+## ✅ Features
+
+| Feature | Description |
 |---|---|
-| 🔓 **Desbloqueio de conta AD** | Localiza a conta no Active Directory, envia código de confirmação por e-mail e desbloqueia automaticamente |
-| 🔥 **Derrubada de sessão de firewall** | Consulta todos os Fortinets configurados, localiza sessões ativas e as encerra via API |
-| 🌐 **Guia de VPN passo a passo** | Envia tutorial ilustrado com capturas de tela do FortiClient |
-| 🧑‍💼 **Escalonamento humano** | Abre chamado no GLPI, notifica a equipe no Teams e monitora SLA de resposta |
-| ⏱️ **Timeouts automáticos** | Avisa o usuário se ninguém atendeu no prazo e encerra sessões inativas |
-| 🔐 **Whitelist de acesso** | Apenas funcionários home office cadastrados podem interagir com o bot |
+| 🔓 **AD Account Unlock** | Locates the account in Active Directory, sends a confirmation code by email, and unlocks it automatically |
+| 🔥 **Firewall Session Termination** | Queries all configured FortiGate firewalls, locates active sessions, and terminates them via API |
+| 🌐 **Step-by-step VPN Guide** | Sends an illustrated tutorial with FortiClient screenshots |
+| 🧑‍💼 **Human Escalation** | Opens a ticket in GLPI, notifies the team in Teams, and monitors SLA response time |
+| ⏱️ **Automatic Timeouts** | Notifies the user if no one responded within SLA and closes inactive sessions |
+| 🔐 **Access Whitelist** | Only registered remote employees can interact with the bot |
 
 ---
 
-## 🔐 Segurança — Whitelist de telefones
+## 🔐 Security — Phone Whitelist
 
-O bot mantém uma tabela `allowed_phones` no PostgreSQL com os números autorizados. Mensagens de números não cadastrados são **descartadas silenciosamente**, sem resposta, para não confirmar a existência do serviço.
+The bot maintains an `allowed_phones` table in PostgreSQL with authorized phone numbers. Messages from unregistered numbers are **silently discarded** — no response is sent, to avoid confirming the service exists.
 
-### Por que isso importa
+### Why this matters
 
-- O número do WhatsApp do bot pode ser divulgado acidentalmente
-- Sem whitelist, qualquer pessoa poderia acionar o fluxo de desbloqueio de contas ou derrubada de sessões
-- A whitelist impede até mesmo o início do fluxo para usuários não autorizados
+- The bot's WhatsApp number may be accidentally shared
+- Without a whitelist, anyone could trigger the account unlock or firewall session termination flow
+- The whitelist prevents even the start of any flow for unauthorized users
 
-### Fluxo de autorização
+### Authorization flow
 
 ```
-Mensagem recebida
+Incoming message
         │
         ▼
-IsPhoneAllowed(phone)?  ──── NÃO ────▶  descarta silenciosamente (fail-closed)
+IsPhoneAllowed(phone)?  ──── NO ────▶  silently discarded (fail-closed)
         │
-       SIM
+       YES
         │
         ▼
-bot.Handle(...)  ──▶  resposta normal
+bot.Handle(...)  ──▶  normal response
 ```
 
-A verificação usa um índice parcial `WHERE active = TRUE`, garantindo lookup O(log n).
+The check uses a partial index `WHERE active = TRUE`, ensuring O(log n) lookup.
 
-### Gerenciar a whitelist
+### Managing the whitelist
 
-**Adicionar manualmente via SQL:**
+**Add manually via SQL:**
 ```sql
 INSERT INTO allowed_phones (phone, matricula, name)
-VALUES ('11991234567', 'JSILVA', 'João Silva')
+VALUES ('11991234567', 'JSMITH', 'John Smith')
 ON CONFLICT (phone) DO UPDATE
     SET active = TRUE, name = EXCLUDED.name, updated_at = NOW();
 ```
 
-**Desativar (soft-delete):**
+**Deactivate (soft-delete):**
 ```sql
 UPDATE allowed_phones SET active = FALSE, updated_at = NOW()
 WHERE phone = '11991234567';
 ```
 
-**Via código Go (integração com RH):**
+**Via Go code (HR system integration):**
 ```go
-// Adicionar individualmente
-db.AddAllowedPhone("11991234567", "JSILVA", "João Silva")
+// Add individually
+db.AddAllowedPhone("11991234567", "JSMITH", "John Smith")
 
-// Sincronização em lote — substitui toda a lista atomicamente
+// Bulk sync — atomically replaces the entire list
 entries := []db.AllowedPhone{
-    {Phone: "11991234567", Matricula: "JSILVA", Name: "João Silva"},
+    {Phone: "11991234567", Matricula: "JSMITH", Name: "John Smith"},
     {Phone: "47987654321", Matricula: "MMATOS", Name: "Maria Matos"},
 }
 db.BulkSyncAllowedPhones(entries)
 ```
 
-> **Dica:** Agende `BulkSyncAllowedPhones` para rodar diariamente, alimentado pelos funcionários em home office do seu sistema de RH ou de um grupo no AD (ex: `GRP_HomeOffice`).
+> **Tip:** Schedule `BulkSyncAllowedPhones` to run daily, fed by remote employees from your HR system or an AD group (e.g., `GRP_HomeOffice`).
 
 ---
 
-## 🏗️ Arquitetura
+## 🏗️ Architecture
 
 ```
 WhatsApp (whatsmeow)
@@ -102,28 +107,28 @@ WhatsApp (whatsmeow)
         │
         ├── IsPhoneAllowed()  ◀── PostgreSQL: allowed_phones (whitelist)
         │
-        ├── bot.Handle()      ◀── Máquina de estados por sessão
+        ├── bot.Handle()      ◀── Per-session state machine
         │       │
-        │       ├── AD (LDAP/LDAPS)          → desbloqueio de conta
-        │       ├── Fortigate (REST API)     → sessões de firewall
-        │       ├── GLPI (OAuth2 REST API)   → abertura de chamados
-        │       ├── SMTP                     → códigos de confirmação
-        │       └── Teams (Webhook)          → notificações à equipe
+        │       ├── AD (LDAP/LDAPS)          → account unlock
+        │       ├── FortiGate (REST API)     → firewall session termination
+        │       ├── GLPI (OAuth2 REST API)   → ticket management
+        │       ├── SMTP                     → confirmation code delivery
+        │       └── Teams (Webhook)          → team notifications
         │
-        └── startCheckers()   → goroutine de timeouts (1 min)
+        └── startCheckers()   → timeout goroutine (1 min interval)
 ```
 
 ---
 
-## ⚙️ Instalação
+## ⚙️ Installation
 
-### Pré-requisitos
+### Prerequisites
 
 - Go 1.22+
 - PostgreSQL 14+
-- Acesso de rede ao AD (LDAP/LDAPS), Fortigate e GLPI
+- Network access to AD (LDAP/LDAPS), FortiGate, and GLPI
 
-### 1. Clonar e compilar
+### 1. Clone and build
 
 ```bash
 git clone https://github.com/imHenrybtw/remote-support-bot
@@ -131,175 +136,183 @@ cd support-bot
 go build -o support-bot ./...
 ```
 
-### 2. Configurar credenciais
+### 2. Configure credentials
 
 ```bash
 cp .env.example .env
-# Edite o .env e preencha todos os valores
+# Edit .env and fill in all values
 ```
 
-### 3. Configurar o `config.yaml`
+### 3. Configure `config.yaml`
 
-Ajuste os valores de acordo com seu ambiente. Os campos principais:
+Adjust the values to match your environment. Key fields:
 
 ```yaml
 bot:
-  company_name: "Minha Empresa"   # aparece nos e-mails e cards do Teams
+  company_name: "My Company"   # appears in emails and Teams cards
 
 ad:
-  host:    "ldaps://dc.empresa.local:636"
-  bind_dn: "CN=ldap bot,OU=Servicos,DC=empresa,DC=local"
-  base_dn: "DC=empresa,DC=local"
+  host:    "ldaps://dc.company.local:636"
+  bind_dn: "CN=ldap bot,OU=Services,DC=company,DC=local"
+  base_dn: "DC=company,DC=local"
 
 smtp:
   host: "192.168.1.10"
-  from: "Bot Suporte TI <no-reply@empresa.com.br>"
+  from: "IT Support Bot <no-reply@company.com>"
 
 firewalls:
-  - name: "Matriz"              # FW_TOKEN_Matriz no .env
-    host: "https://fortigate.empresa.com.br"
+  - name: "HQ"              # FW_TOKEN_HQ in .env
+    host: "https://fortigate.company.com"
 
 glpi:
-  url:          "https://glpi.empresa.com.br/api.php/v2"
-  ticket_title: "Suporte via WhatsApp"
+  url:          "https://glpi.company.com/api.php/v2"
+  ticket_title: "WhatsApp Support"
 
 vpn:
-  gateway:      "ssl-vpn.empresa.com.br"
+  gateway:      "ssl-vpn.company.com"
   port:         8443
-  profile_name: "VPN-Empresa"
+  profile_name: "Company-VPN"
   images_path:  "/opt/support-bot/vpn-images"
 ```
 
-> **VPN:** O tutorial enviado ao usuário usa `gateway`, `port` e `profile_name` diretamente do `config.yaml`. Basta alterar esses valores para adaptar ao seu ambiente — sem recompilar.
+> **VPN:** The tutorial sent to users uses `gateway`, `port`, and `profile_name` directly from `config.yaml`. Just update these values to adapt to your environment — no recompilation needed.
 
-### 4. Criar o banco de dados
+### 4. Create the database
 
 ```bash
-psql -U postgres -c "CREATE USER botsuporte WITH PASSWORD 'senha_aqui';"
+psql -U postgres -c "CREATE USER botsuporte WITH PASSWORD 'your_password';"
 psql -U postgres -c "CREATE DATABASE support_bot OWNER botsuporte;"
 ```
 
-As tabelas são criadas automaticamente na primeira execução.
+Tables are created automatically on first run.
 
-### 5. Popular a whitelist
+### 5. Populate the whitelist
 
 ```bash
 psql -U botsuporte -d support_bot -c "
 INSERT INTO allowed_phones (phone, matricula, name) VALUES
-  ('11991234567', 'JSILVA', 'João Silva'),
+  ('11991234567', 'JSMITH', 'John Smith'),
   ('47987654321', 'MMATOS', 'Maria Matos');
 "
 ```
 
-### 6. Executar
+### 6. Run
 
 ```bash
 ./support-bot config.yaml
 ```
 
-Na primeira execução (sem sessão salva), um QR Code aparece no terminal. Escaneie com o WhatsApp em **Aparelhos conectados → Conectar um aparelho**.
+On first run (no saved session), a QR Code appears in the terminal. Scan it with WhatsApp via **Linked Devices → Link a Device**.
 
-### 7. Instalar como serviço (systemd)
+### 7. Install as a systemd service
 
 ```bash
-# Cria usuário dedicado (sem shell, sem home)
+# Create a dedicated user (no shell, no home directory)
 sudo useradd -r -s /sbin/nologin support-bot
 
-# Copia os arquivos
+# Copy files
 sudo mkdir -p /opt/support-bot
 sudo cp support-bot config.yaml .env /opt/support-bot/
 sudo chown -R support-bot:support-bot /opt/support-bot
-sudo chmod 600 /opt/support-bot/.env   # somente o dono lê as credenciais
+sudo chmod 600 /opt/support-bot/.env   # owner read-only for credentials
 
-# Instala e inicia o serviço
+# Install and start the service
 sudo cp support-bot.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now support-bot
 
-# Acompanhar logs em tempo real
+# Follow logs in real time
 sudo journalctl -u support-bot -f
 ```
 
 ---
 
-## 📁 Estrutura do projeto
+## 📁 Project structure
 
 ```
 .
-├── main.go               # Entrada, handler do WhatsApp, whitelist guard
-├── config.go             # Leitura de config.yaml + .env
-├── config.yaml           # Configuração (seguro para commitar)
-├── .env.example          # Modelo de credenciais (nunca commitar o .env)
+├── main.go               # Entry point, WhatsApp handler, whitelist guard
+├── config.go             # config.yaml + .env reader
+├── config.yaml           # Configuration (safe to commit)
+├── .env.example          # Credentials template (never commit .env)
 ├── .gitignore
 ├── db.go                 # PostgreSQL: migrations, CRUD, whitelist
-├── ad.go                 # Cliente LDAP/LDAPS para o Active Directory
-├── fortigate.go          # API REST do Fortigate (sessões e deauth)
-├── glpi.go               # API REST do GLPI com OAuth2
-├── mail.go               # Envio de e-mails transacionais (SMTP)
-├── teams.go              # Notificações no Microsoft Teams (Adaptive Cards)
-├── vpn.go                # Guia de VPN com imagens (configurável via YAML)
-└── support-bot.service   # Unit file do systemd
+├── ad.go                 # LDAP/LDAPS client for Active Directory
+├── fortigate.go          # FortiGate REST API (sessions and deauth)
+├── glpi.go               # GLPI REST API with OAuth2
+├── mail.go               # Transactional email delivery (SMTP)
+├── teams.go              # Microsoft Teams notifications (Adaptive Cards)
+├── vpn.go                # VPN guide with images (configurable via YAML)
+└── support-bot.service   # systemd unit file
 ```
 
 ---
 
-## 🗄️ Schema do banco de dados
+## 🗄️ Database schema
 
-| Tabela | Propósito |
+| Table | Purpose |
 |---|---|
-| `allowed_phones` | Whitelist de funcionários home office autorizados |
-| `unlock_requests` | Histórico de desbloqueios de conta no AD |
-| `firewall_requests` | Histórico de derrubadas de sessão no Fortigate |
-| `human_requests` | Atendimentos escalados para a equipe humana |
+| `allowed_phones` | Whitelist of authorized remote employees |
+| `unlock_requests` | History of AD account unlocks |
+| `firewall_requests` | History of FortiGate session terminations |
+| `human_requests` | Escalations handled by the human support team |
 
 ---
 
-## 🔄 Sincronização automática com o RH
+## 🔄 Automatic HR synchronization
 
-Para manter a whitelist atualizada automaticamente, crie um job agendado que consulte a base de funcionários em home office e chame `BulkSyncAllowedPhones`. Exemplo com cron:
+To keep the whitelist up to date automatically, create a scheduled job that queries the remote employee list from your HR system and calls `BulkSyncAllowedPhones`. Example with cron:
 
 ```bash
-# crontab -e  (executa toda noite às 2h)
+# crontab -e  (runs nightly at 2am)
 0 2 * * * /opt/support-bot/sync-whitelist >> /var/log/support-bot-sync.log 2>&1
 ```
 
-Para sincronização robusta, compile um binário separado que:
-1. Consulta os funcionários em home office no seu sistema de RH ou AD
-2. Monta um slice `[]db.AllowedPhone`
-3. Chama `db.BulkSyncAllowedPhones(entries)` — que desativa automaticamente quem saiu da lista
+For robust synchronization, compile a separate binary that:
+1. Queries remote employees from your HR system or Active Directory
+2. Builds a `[]db.AllowedPhone` slice
+3. Calls `db.BulkSyncAllowedPhones(entries)` — which automatically deactivates employees removed from the list
 
 ---
 
-## 🛡️ Boas práticas de segurança
+## 🛡️ Security best practices
 
-| Item | Recomendação |
+| Item | Recommendation |
 |---|---|
-| **Credenciais** | Nunca commite o `.env`. Use segredos do CI/CD ou um vault em produção. |
-| **TLS do AD** | Prefira `ldaps://` (porta 636). Para validação completa, defina `tls_skip_verify: false` e forneça o CA. |
-| **PostgreSQL** | Restrinja o acesso ao banco apenas ao host do bot via `pg_hba.conf`. |
-| **Tokens Fortigate** | Use tokens de API com permissões mínimas: Monitor (leitura) + Network (deauth). |
-| **Whitelist fail-closed** | Erros de banco na verificação do telefone bloqueiam o acesso por padrão — nunca liberam. |
-| **Arquivo .env** | `chmod 600 .env` e `chown support-bot:support-bot .env`. |
-| **Sessão WhatsApp** | `wa-sessions.db` contém chaves privadas do dispositivo — nunca versionar nem fazer backup em local não criptografado. |
+| **Credentials** | Never commit `.env`. Use CI/CD secrets or a vault in production. |
+| **AD TLS** | Prefer `ldaps://` (port 636). For full certificate validation, set `tls_skip_verify: false` and provide the CA. |
+| **PostgreSQL** | Restrict database access to the bot host only via `pg_hba.conf`. |
+| **FortiGate tokens** | Use API tokens with minimum permissions: Monitor (read) + Network (deauth only). |
+| **Whitelist fail-closed** | Database errors during phone verification block access by default — they never grant it. |
+| **`.env` file** | `chmod 600 .env` and `chown support-bot:support-bot .env`. |
+| **WhatsApp session** | `wa-sessions.db` contains device private keys — never version or back up to an unencrypted location. |
 
 ---
 
-## 🖼️ Imagens do guia de VPN
+## 🖼️ VPN guide images
 
-As capturas de tela do FortiClient ficam em `vpn.images_path` (padrão: `/opt/support-bot/vpn-images`). Nomeie os arquivos conforme referenciado em `vpn.go`:
+FortiClient screenshots go in `vpn.images_path` (default: `/opt/support-bot/vpn-images`). Name the files as referenced in `vpn.go`:
 
-| Arquivo | Conteúdo esperado |
+| File | Expected content |
 |---|---|
-| `02-tela-inicial.png` | Tela inicial do FortiClient com o painel lateral |
-| `03-perfil-vpn.png` | Tela de configuração do perfil de conexão |
-| `04-login-vpn.png` | Tela de login (usuário e senha) |
-| `05-conectado.png` | Status "Conectado" com ícone verde |
+| `02-tela-inicial.png` | FortiClient home screen with the side panel |
+| `03-perfil-vpn.png` | Connection profile configuration screen |
+| `04-login-vpn.png` | Login screen (username and password) |
+| `05-conectado.png` | "Connected" status with green icon |
 
-Se uma imagem não for encontrada, o bot envia a mensagem de texto correspondente como fallback.
+If an image is not found, the bot sends the corresponding text message as a fallback.
 
-## 🚧 Em desenvolvimento
- 
-| Funcionalidade | Status |
+---
+
+## 🚧 In development
+
+| Feature | Status |
 |---|---|
-| 🖥️ **Painel web de auditoria** | Em desenvolvimento — interface para visualizar histórico de operações, gerenciar a whitelist de telefones e acompanhar atendimentos em aberto, com autenticação básica configurável via `WEB_USERNAME` / `WEB_PASSWORD` no `.env` |
+| 🖥️ **Audit web panel** | In progress — web interface to view operation history, manage the phone whitelist, and monitor open support requests, with basic authentication configurable via `WEB_USERNAME` / `WEB_PASSWORD` in `.env` |
 
+---
+
+## 👤 Author
+
+**Henry Victor Passold Gomes** — IT Infrastructure & Support Lead  
+[LinkedIn](https://www.linkedin.com/in/henry-victor-passold-gomes) · [GitHub](https://github.com/imHenrybtw)
