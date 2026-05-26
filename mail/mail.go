@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net"
+	"strconv"
 	"net/smtp"
 	"strings"
 	"time"
@@ -75,7 +76,7 @@ func send(to, subject, plainBody, htmlBody string) error {
 	w("")
 	w("--" + boundary + "--")
 
-	addr := fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
+	addr := net.JoinHostPort(host, strconv.Itoa(port))
 
 	// Usa net.Dial com timeout explícito — smtp.SendMail não suporta contexto.
 	conn, err := net.DialTimeout("tcp", addr, smtpTimeout)
